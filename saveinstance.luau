@@ -1873,46 +1873,22 @@ do
 				return
 			end
 
-			local matching_versions, is_matched = {}
-
-			-- * https://setup.rbxcdn.com/versionQTStudio seems to be a bit behind DeployHistory.txt
-			local DeployHistory = string.split(game:HttpGet("https://setup.rbxcdn.com/DeployHistory.txt", true), "\n")
-			for i = #DeployHistory, 1, -1 do
-				local line = DeployHistory[i]
-
-				local file_version = string.match(line, "file version: ([%d, ]+)")
-				if file_version then
-					if string.split(file_version, ", ")[2] == CLIENT_VERSION_str then
-						is_matched = true
-
-						local version_hash = string.match(line, "(version%-[^%s]+)")
-						if version_hash then
-							matching_versions[version_hash] = true
-						end
-					elseif is_matched then
-						break
-					end
-				end
-			end
-
-			for version_hash in matching_versions do
-				ok, result = pcall(
-					game.HttpGet,
-					game,
-					"https://setup.rbxcdn.com/" .. version_hash .. "-Full-API-Dump.json",
-					true
-				)
-				if ok then
-					local o, r = pcall(service.HttpService.JSONDecode, service.HttpService, result)
-					if o then
-						API_Dump = service.HttpService:JSONEncode(r.Classes) -- minify it
-						break
-					end
-				end
-			end
-			if writefile then
-				writefile(CLIENT_VERSION_str, API_Dump)
-			end
+-- * Fast path: use Mini-API-Dump directly instead of scanning DeployHistory
+ok, result = pcall(
+    game.HttpGet,
+    game,
+    "https://raw.githubusercontent.com/MaximumADHD/Roblox-Client-Tracker/roblox/Mini-API-Dump.json",
+    true
+)
+if ok then
+    local o, r = pcall(service.HttpService.JSONDecode, service.HttpService, result)
+    if o then
+        API_Dump = service.HttpService:JSONEncode(r.Classes) -- minify it
+        if writefile then
+            writefile(CLIENT_VERSION_str, API_Dump)
+        end
+    end
+end
 		end)
 
 		if not ok or not API_Dump then
